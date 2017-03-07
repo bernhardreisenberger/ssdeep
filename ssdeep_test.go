@@ -1,9 +1,7 @@
 package ssdeep
 
 import (
-	"log"
 	"math/rand"
-	"os/exec"
 	"testing"
 )
 
@@ -11,15 +9,6 @@ func TestRollingHash(t *testing.T) {
 	sdeep := NewSSDEEP()
 	if sdeep.rollHash(byte('A')) != 585 {
 		t.Error("Rolling hash not matching")
-	}
-}
-
-func TestFindBlock(t *testing.T) {
-	sdeep := NewSSDEEP()
-	sdeep.Fuzzy("/tmp/data")
-	_, err := exec.Command("ssdeep", "/tmp/data").Output()
-	if err != nil {
-		log.Fatal(err)
 	}
 }
 

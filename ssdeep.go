@@ -1,8 +1,8 @@
 package ssdeep
 
 import (
-	"bufio"
-	"fmt"
+	"bytes"
+	"io"
 	"math"
 	"os"
 )
@@ -33,6 +33,13 @@ type SSDEEP struct {
 	hashString2  string
 	blockHash1   uint32
 	blockHash2   uint32
+}
+
+// FuzzyHash struct for comparison
+type FuzzyHash struct {
+	blockSize   int
+	hashString1 string
+	hashString2 string
 }
 
 // NewSSDEEP creates a new SSDEEP hash
@@ -109,32 +116,32 @@ func (sdeep *SSDEEP) processByte(b byte) {
 	}
 }
 
-func (sdeep *SSDEEP) processFile(f *os.File) {
-	r := bufio.NewReader(f)
+func (sdeep *SSDEEP) processBuffer(buf *bytes.Buffer) {
 	sdeep.newRollingState()
-	b, err := r.ReadByte()
+	b, err := buf.ReadByte()
 	for err == nil {
 		sdeep.processByte(b)
-		b, err = r.ReadByte()
+		b, err = buf.ReadByte()
 	}
 	// Finalize the hash string with the remaining data
 	sdeep.hashString1 += string(b64[sdeep.blockHash1%64])
 	sdeep.hashString2 += string(b64[sdeep.blockHash2%64])
 }
 
-// Fuzzy hash of a provided file
-func (sdeep *SSDEEP) Fuzzy(fileLocation string) string {
-	f, err := os.Open(fileLocation)
-	defer f.Close()
+// Fuzzy hash of a provided reader
+func (sdeep *SSDEEP) Fuzzy(r io.Reader) (*FuzzyHash, error) {
+	buf := &bytes.Buffer{}
+	n, err := io.Copy(buf, r)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	n, err := getFileSize(f)
-	if err != nil {
-		panic(err)
-	}
-	sdeep.getBlockSize(n)
-	fmt.Printf("block size: %d, file size: %d, n/bs: %d\n", sdeep.blockSize, n, n/sdeep.blockSize)
-	sdeep.processFile(f)
-	return fmt.Sprintf("%d:%s:%s,\"%s\"", sdeep.blockSize, sdeep.hashString1, sdeep.hashString2, fileLocation)
+
+	sdeep.getBlockSize(int(n))
+	sdeep.processBuffer(buf)
+
+	return &FuzzyHash{
+		sdeep.blockSize,
+		sdeep.hashString1,
+		sdeep.hashString2,
+	}, nil
 }

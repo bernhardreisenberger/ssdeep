@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"math"
-	"os"
 )
 
 var rollingWindow uint32 = 7
@@ -64,6 +63,14 @@ func sumHash(c byte, h uint32) uint32 {
 	return (h * hashPrime) ^ uint32(c)
 }
 
+func getBlockSize(n int) int {
+	blockSize := blockMin * int(math.Exp2(math.Floor(math.Log2(float64(n/(spamSumLength*blockMin))))))
+	for blockSize*spamSumLength < n {
+		blockSize = blockSize * 2
+	}
+	return blockSize
+}
+
 // rollHash based on Adler checksum
 func (sdeep *SSDEEP) rollHash(c byte) uint32 {
 	rs := &sdeep.rollingState
@@ -79,22 +86,6 @@ func (sdeep *SSDEEP) rollHash(c byte) uint32 {
 	rs.h3 = rs.h3 << 5
 	rs.h3 ^= uint32(c)
 	return rs.h1 + rs.h2 + rs.h3
-}
-
-func getBlockSize(n int) int {
-	blockSize := blockMin * int(math.Exp2(math.Floor(math.Log2(float64(n/(spamSumLength*blockMin))))))
-	for blockSize*spamSumLength < n {
-		blockSize = blockSize * 2
-	}
-	return blockSize
-}
-
-func getFileSize(f *os.File) (int, error) {
-	fi, err := f.Stat()
-	if err != nil {
-		return 0, err
-	}
-	return int(fi.Size()), nil
 }
 
 func (sdeep *SSDEEP) processByte(b byte) {

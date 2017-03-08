@@ -3,11 +3,10 @@ package ssdeep
 import (
 	"bytes"
 	"io"
-	"math"
 )
 
 var rollingWindow uint32 = 7
-var blockMin = 3
+var blockSizeMin = 3
 
 const spamSumLength = 64
 
@@ -63,8 +62,8 @@ func sumHash(c byte, h uint32) uint32 {
 	return (h * hashPrime) ^ uint32(c)
 }
 
-func getBlockSize(n int) int {
-	blockSize := blockMin * int(math.Exp2(math.Floor(math.Log2(float64(n/(spamSumLength*blockMin))))))
+func initBlockSize(n int) int {
+	blockSize := blockSizeMin
 	for blockSize*spamSumLength < n {
 		blockSize = blockSize * 2
 	}
@@ -127,7 +126,7 @@ func (sdeep *SSDEEP) Fuzzy(r io.Reader) (*FuzzyHash, error) {
 	if err != nil {
 		return nil, err
 	}
-	sdeep.blockSize = getBlockSize(int(n))
+	sdeep.blockSize = initBlockSize(int(n))
 
 	sdeep.processBuffer(buf)
 

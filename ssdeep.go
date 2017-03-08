@@ -53,9 +53,10 @@ func NewSSDEEP() SSDEEP {
 	}
 }
 
-func (sdeep *SSDEEP) newRollingState() {
-	sdeep.rollingState = rollingState{}
-	sdeep.rollingState.window = make([]byte, rollingWindow)
+func newRollingState() rollingState {
+	return rollingState{
+		window: make([]byte, rollingWindow),
+	}
 }
 
 // sumHash based on FNV hash
@@ -80,12 +81,12 @@ func (sdeep *SSDEEP) rollHash(c byte) uint32 {
 	return rs.h1 + rs.h2 + rs.h3
 }
 
-func (sdeep *SSDEEP) getBlockSize(n int) {
+func getBlockSize(n int) int {
 	blockSize := blockMin * int(math.Exp2(math.Floor(math.Log2(float64(n/(spamSumLength*blockMin))))))
 	for blockSize*spamSumLength < n {
 		blockSize = blockSize * 2
 	}
-	sdeep.blockSize = blockSize
+	return blockSize
 }
 
 func getFileSize(f *os.File) (int, error) {
@@ -104,20 +105,20 @@ func (sdeep *SSDEEP) processByte(b byte) {
 		if len(sdeep.hashString1) < spamSumLength-1 {
 			sdeep.hashString1 += string(b64[sdeep.blockHash1%64])
 			sdeep.blockHash1 = hashIinit
-			sdeep.newRollingState()
+			sdeep.rollingState = newRollingState()
 		}
 		if rh%(sdeep.blockSize*2) == ((sdeep.blockSize * 2) - 1) {
 			if len(sdeep.hashString2) < spamSumLength/2-1 {
 				sdeep.hashString2 += string(b64[sdeep.blockHash2%64])
 				sdeep.blockHash2 = hashIinit
-				sdeep.newRollingState()
+				sdeep.rollingState = newRollingState()
 			}
 		}
 	}
 }
 
 func (sdeep *SSDEEP) processBuffer(buf *bytes.Buffer) {
-	sdeep.newRollingState()
+	sdeep.rollingState = newRollingState()
 	b, err := buf.ReadByte()
 	for err == nil {
 		sdeep.processByte(b)
@@ -135,8 +136,8 @@ func (sdeep *SSDEEP) Fuzzy(r io.Reader) (*FuzzyHash, error) {
 	if err != nil {
 		return nil, err
 	}
+	sdeep.blockSize = getBlockSize(int(n))
 
-	sdeep.getBlockSize(int(n))
 	sdeep.processBuffer(buf)
 
 	return &FuzzyHash{

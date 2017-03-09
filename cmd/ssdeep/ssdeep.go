@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bernhardreisenberger/ssdeep"
+	"github.com/nimbusec-oss/ssdeep"
 )
 
 func main() {

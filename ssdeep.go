@@ -23,6 +23,13 @@ type rollingState struct {
 	n      uint32
 }
 
+// FuzzyHash struct for comparison
+type FuzzyHash struct {
+	blockSize   int
+	hashString1 string
+	hashString2 string
+}
+
 // SSDEEP state struct
 type SSDEEP struct {
 	rollingState rollingState
@@ -31,43 +38,6 @@ type SSDEEP struct {
 	hashString2  string
 	blockHash1   uint32
 	blockHash2   uint32
-}
-
-// FuzzyHash struct for comparison
-type FuzzyHash struct {
-	blockSize   int
-	hashString1 string
-	hashString2 string
-}
-
-// NewSSDEEP creates a new SSDEEP hash
-func NewSSDEEP() SSDEEP {
-	return SSDEEP{
-		blockHash1: hashIinit,
-		blockHash2: hashIinit,
-		rollingState: rollingState{
-			window: make([]byte, rollingWindow),
-		},
-	}
-}
-
-func newRollingState() rollingState {
-	return rollingState{
-		window: make([]byte, rollingWindow),
-	}
-}
-
-// sumHash based on FNV hash
-func sumHash(c byte, h uint32) uint32 {
-	return (h * hashPrime) ^ uint32(c)
-}
-
-func initBlockSize(n int) int {
-	blockSize := blockSizeMin
-	for blockSize*spamSumLength < n {
-		blockSize = blockSize * 2
-	}
-	return blockSize
 }
 
 // rollHash based on Adler checksum
@@ -95,44 +65,79 @@ func (sdeep *SSDEEP) processByte(b byte) {
 		if len(sdeep.hashString1) < spamSumLength-1 {
 			sdeep.hashString1 += string(b64[sdeep.blockHash1%64])
 			sdeep.blockHash1 = hashIinit
-			sdeep.rollingState = newRollingState()
 		}
-		if rh%(sdeep.blockSize*2) == ((sdeep.blockSize * 2) - 1) {
-			if len(sdeep.hashString2) < spamSumLength/2-1 {
-				sdeep.hashString2 += string(b64[sdeep.blockHash2%64])
-				sdeep.blockHash2 = hashIinit
-				sdeep.rollingState = newRollingState()
-			}
+	}
+	if rh%(sdeep.blockSize*2) == ((sdeep.blockSize * 2) - 1) {
+		if len(sdeep.hashString2) < spamSumLength/2-1 {
+			sdeep.hashString2 += string(b64[sdeep.blockHash2%64])
+			sdeep.blockHash2 = hashIinit
 		}
 	}
 }
 
-func (sdeep *SSDEEP) processBuffer(buf *bytes.Buffer) {
-	sdeep.rollingState = newRollingState()
-	b, err := buf.ReadByte()
-	for err == nil {
-		sdeep.processByte(b)
-		b, err = buf.ReadByte()
+// initSSDEEP creates a new SSDEEP hash
+func initSSDEEP(blockSize int) *SSDEEP {
+	return &SSDEEP{
+		blockHash1: hashIinit,
+		blockHash2: hashIinit,
+		rollingState: rollingState{
+			window: make([]byte, rollingWindow),
+		},
+		hashString1: "",
+		hashString2: "",
+		blockSize:   blockSize,
 	}
-	// Finalize the hash string with the remaining data
-	sdeep.hashString1 += string(b64[sdeep.blockHash1%64])
-	sdeep.hashString2 += string(b64[sdeep.blockHash2%64])
 }
 
-// Fuzzy hash of a provided reader
-func (sdeep *SSDEEP) Fuzzy(r io.Reader) (*FuzzyHash, error) {
-	buf := &bytes.Buffer{}
-	n, err := io.Copy(buf, r)
-	if err != nil {
-		return nil, err
-	}
-	sdeep.blockSize = initBlockSize(int(n))
+// sumHash based on FNV hash
+func sumHash(c byte, h uint32) uint32 {
+	return (h * hashPrime) ^ uint32(c)
+}
 
-	sdeep.processBuffer(buf)
+func initBlockSize(n int) int {
+	blockSize := blockSizeMin
+	for blockSize*spamSumLength < n {
+		blockSize = blockSize * 2
+	}
+	return blockSize
+}
+
+func calcSpamSum(buf *bytes.Buffer, blockSize int) *FuzzyHash {
+	sdeep := initSSDEEP(blockSize)
+	for {
+		b := buf.Bytes()
+		for i := range b {
+			sdeep.processByte(b[i])
+		}
+		// Finalize the hash string with the remaining data
+		sdeep.hashString1 += string(b64[sdeep.blockHash1%64])
+		sdeep.hashString2 += string(b64[sdeep.blockHash2%64])
+
+		// wrong blockSize
+		if len(sdeep.hashString1) < spamSumLength/2 {
+			sdeep = initSSDEEP(sdeep.blockSize / 2) // divide blocksize, and initialize ssdeep again
+		} else {
+			break
+		}
+	}
 
 	return &FuzzyHash{
 		sdeep.blockSize,
 		sdeep.hashString1,
 		sdeep.hashString2,
-	}, nil
+	}
+}
+
+// Fuzzy hash of a provided reader
+func Fuzzy(r io.Reader) (*FuzzyHash, error) {
+	buf := &bytes.Buffer{}
+	n, err := io.Copy(buf, r)
+	if err != nil {
+		return nil, err
+	}
+	fuzzy := calcSpamSum(buf, initBlockSize(int(n)))
+
+	// fmt.Printf("%d:%s:%s\n", fuzzy.blockSize, fuzzy.hashString1, fuzzy.hashString2)
+
+	return fuzzy, nil
 }

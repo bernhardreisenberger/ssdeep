@@ -15,13 +15,12 @@ func main() {
 		return
 	}
 	if len(flag.Args()) == 1 {
-		sdeep := ssdeep.NewSSDEEP()
 		file, err := os.Open(flag.Args()[0])
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		hash, err := sdeep.Fuzzy(file)
+		hash, err := ssdeep.Fuzzy(file)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -29,29 +28,27 @@ func main() {
 		fmt.Printf("%v", &hash)
 	}
 	if len(flag.Args()) == 2 {
-		sdeep := ssdeep.NewSSDEEP()
 		f1, err := os.Open(flag.Args()[0])
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		h1, err := sdeep.Fuzzy(f1)
+		h1, err := ssdeep.Fuzzy(f1)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		sdeep = ssdeep.NewSSDEEP()
 		f2, err := os.Open(flag.Args()[1])
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		h2, err := sdeep.Fuzzy(f2)
+		h2, err := ssdeep.Fuzzy(f2)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		score := ssdeep.HashDistance(*h1, *h2)
+		score := ssdeep.HashDistance(h1, h2)
 		fmt.Println(score)
 	}
 }

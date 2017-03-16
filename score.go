@@ -3,7 +3,11 @@ package ssdeep
 import "math"
 
 // HashDistance between two strings
-func HashDistance(hash1, hash2 FuzzyHash) int {
+func HashDistance(hash1, hash2 *FuzzyHash) int {
+	if hash1 == nil || hash2 == nil {
+		return 0
+	}
+
 	blockSize1, hash11, hash12 := hash1.blockSize, hash1.hashString1, hash1.hashString2
 	blockSize2, hash21, hash22 := hash2.blockSize, hash2.hashString1, hash2.hashString2
 

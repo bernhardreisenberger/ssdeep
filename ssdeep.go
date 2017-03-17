@@ -114,7 +114,7 @@ func calcSpamSum(buf *bytes.Buffer, blockSize int) *FuzzyHash {
 		sdeep.hashString2 += string(b64[sdeep.blockHash2%64])
 
 		// wrong blockSize
-		if len(sdeep.hashString1) < spamSumLength/2 {
+		if (len(sdeep.hashString1) < spamSumLength/2) && (sdeep.blockSize > blockSizeMin) {
 			sdeep = initSSDEEP(sdeep.blockSize / 2) // divide blocksize, and initialize ssdeep again
 		} else {
 			break

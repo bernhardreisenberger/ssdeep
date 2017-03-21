@@ -2,6 +2,7 @@ package ssdeep
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 )
 
@@ -140,4 +141,8 @@ func Fuzzy(r io.Reader) (*FuzzyHash, error) {
 	// fmt.Printf("%d:%s:%s\n", fuzzy.blockSize, fuzzy.hashString1, fuzzy.hashString2)
 
 	return fuzzy, nil
+}
+
+func (h FuzzyHash) String() string {
+	return fmt.Sprintf("%d:%s:%s", h.blockSize, h.hashString1, h.hashString2)
 }

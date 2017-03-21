@@ -60,6 +60,13 @@ func TestFuzzy2(t *testing.T) {
 	}
 }
 
+func TestToString(t *testing.T) {
+	testHash := h1
+	if testHash.String() != "192:MUPMinqP6+wNQ7Q40L/iB3n2rIBrP0GZKF4jsef+0FVQLSwbLbj41iH8nFVYv980:x0CllivQiFmt" {
+		t.Error("String method does not work correctly")
+	}
+}
+
 func TestRollingHash(t *testing.T) {
 	sdeep := SSDEEP{
 		rollingState: rollingState{

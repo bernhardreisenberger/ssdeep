@@ -25,7 +25,7 @@ func main() {
 			fmt.Println(err)
 			return
 		}
-		fmt.Printf("%v", &hash)
+		fmt.Println(hash.String())
 	}
 	if len(flag.Args()) == 2 {
 		f1, err := os.Open(flag.Args()[0])
